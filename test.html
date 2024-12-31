@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ingredients and Recipes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        tr.selected {
+            background-color: #d1e7fd;
+        }
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .save-button {
+            cursor: pointer;
+            color: green;
+            font-weight: bold;
+        }
+        .collapsible {
+            background-color: #f1f1f1;
+            color: #444;
+            cursor: pointer;
+            padding: 10px;
+            width: 100%;
+            border: none;
+            text-align: left;
+            outline: none;
+            font-size: 15px;
+        }
+        .active, .collapsible:hover {
+            background-color: #ccc;
+        }
+        .content {
+            padding: 0 18px;
+            display: none;
+            overflow: hidden;
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <div id="main-window">
+        <button onclick="openIngredientsWindow()">Ingredients</button>
+        <button onclick="openRecipesWindow()">Recipes</button>
+    </div>
+
+    <div id="ingredients-window" style="display: none;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Size</th>
+                    <th>Price</th>
+                    <th>Cups</th>
+                    <th>Cups Price</th>
+                    <th>Tablespoons</th>
+                    <th>Tablespoons Price</th>
+                    <th>Teaspoons</th>
+                    <th>Teaspoons Price</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+        <div class="button-container">
+            <button onclick="addIngredient()">Add Ingredient</button>
+            <button onclick="deleteIngredient()">Delete Ingredient</button>
+			<button onclick="convertUnits()">Convert Units</button>
+        </div>
+		<div class="save-button">
+			<button onclick="saveAllIngredients()" class="save-button" id="saveButton">Save All Ingredients</button>
+		</div>
+		<div class="back-button">
+			<button id="back-to-main" onclick="goBackToMain()">Back to Main Screen</button>
+		</div>
+	</div>
+
+    <div id="recipes-window" style="display: none;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Recipe Name</th>
+                    <th>Total Cost</th>
+                    <th>Retail Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+        <div class="button-container">
+            <button onclick="addRecipe()">Add Recipe</button>
+            <button onclick="deleteRecipe()">Delete Recipe</button>
+        </div>
+		<div class="save-button">
+			<button onclick="saveAllRecipes()" class="save-button" id="saveRecipeButton">Save All Recipes</button>
+		</div>
+		<div class="back-button">
+			<button id="back-to-main" onclick="goBackToMain()">Back to Main Screen</button>
+		</div>
+    </div>
+
+    <script>
+	
+		function goBackToMain() {
+			document.getElementById('ingredients-window').style.display = 'none';
+			document.getElementById('recipes-window').style.display = 'none';
+			document.getElementById('main-window').style.display = 'block';
+		}
+        // Function to open Ingredients window
+        function openIngredientsWindow() {
+            document.getElementById('main-window').style.display = 'none';
+            document.getElementById('ingredients-window').style.display = 'block';
+            loadIngredients(); // Load ingredients when the window opens
+        }
+
+        // Function to open Recipes window
+        function openRecipesWindow() {
+            document.getElementById('main-window').style.display = 'none';
+            document.getElementById('recipes-window').style.display = 'block';
+            loadRecipes(); // Load recipes when the window opens
+        }
+
+		// Function to handle row selection for ingredients
+		function selectIngredientRow(event) {
+			const rows = document.querySelectorAll('#ingredients-window tbody tr');
+			rows.forEach(row => row.classList.remove('selected')); // Remove 'selected' class from all rows
+			event.target.closest('tr').classList.add('selected'); // Add 'selected' class to clicked row
+		}
+
+        // Load Ingredients from localStorage
+		function loadIngredients() {
+			const savedIngredients = localStorage.getItem('ingredients');
+			const tbody = document.querySelector('#ingredients-window tbody');
+			tbody.innerHTML = ''; // Clear the table first
+			if (savedIngredients) {
+				const ingredients = JSON.parse(savedIngredients);
+				ingredients.forEach(ingredient => {
+					const row = tbody.insertRow();
+					ingredient.forEach((text, index) => {
+						const cell = row.insertCell();
+						cell.contentEditable = 'true';
+						cell.innerText = text;
+					
+					if ([4, 6, 8].includes(index)) {
+					cell.contentEditable = 'false';
+					} else {
+					cell.contentEditable = 'true';
+					}
+				});
+					
+					// Add click event to select the row
+					row.addEventListener('click', selectIngredientRow);
+				});
+			}
+		}
+
+        // Add a new ingredient row
+		function addIngredient() {
+			const tbody = document.querySelector('#ingredients-window tbody');
+			const row = tbody.insertRow();
+			const headers = ['Name', 'Size', 'Price', 'Cups', 'Cups Price', 'Tablespoons', 'Tablespoons Price', 'Teaspoons', 'Teaspoons Price'];
+
+			headers.forEach((header, index) => {
+				const cell = row.insertCell();
+				cell.contentEditable = [4, 6, 8].includes(index) ? 'false' : 'true';
+				cell.innerText = ''; // Initialize cell with an empty value
+			});
+		}
+
+		function convertUnits() {
+			const tbody = document.querySelector('#ingredients-window tbody');
+			const rows = Array.from(tbody.rows);
+
+			rows.forEach(row => {
+				// Get input values for cups, tablespoons, and teaspoons
+				const cupsCell = row.cells[3];
+				const tablespoonsCell = row.cells[5];
+				const teaspoonsCell = row.cells[7];
+				const cupsPriceCell = row.cells[4];
+				const tablespoonsPriceCell = row.cells[6];
+				const teaspoonsPriceCell = row.cells[8];
+
+				const cups = parseFloat(cupsCell.innerText) || 0;
+				const tablespoons = parseFloat(tablespoonsCell.innerText) || 0;
+				const teaspoons = parseFloat(teaspoonsCell.innerText) || 0;
+
+				// Reset price fields
+				cupsPriceCell.innerText = '';
+				tablespoonsPriceCell.innerText = '';
+				teaspoonsPriceCell.innerText = '';
+
+				// Determine which value is non-zero to perform conversions and calculate prices
+				if (cups > 0) {
+					// Convert from cups to tablespoons and teaspoons
+					tablespoonsCell.innerText = (cups * 16).toFixed(2);
+					teaspoonsCell.innerText = (cups * 16 * 3).toFixed(2);
+
+					// Recalculate prices
+					const pricePerCup = parseFloat((row.cells[2].innerText) / cups) || 0; // Assume price is in the 'Price' column
+					cupsPriceCell.innerText = pricePerCup.toFixed(2);
+					tablespoonsPriceCell.innerText = (pricePerCup / 16).toFixed(2);
+					teaspoonsPriceCell.innerText = (pricePerCup / (16 * 3)).toFixed(2);
+				} else if (tablespoons > 0) {
+					// Convert from tablespoons to cups and teaspoons
+					cupsCell.innerText = (tablespoons / 16).toFixed(2);
+					teaspoonsCell.innerText = (tablespoons * 3).toFixed(2);
+
+					// Recalculate prices
+					const pricePerTablespoon = parseFloat((row.cells[2].innerText) / tablespoons) || 0; // Assume price is in the 'Price' column
+					tablespoonsPriceCell.innerText = pricePerTablespoon.toFixed(2);
+					cupsPriceCell.innerText = (pricePerTablespoon * 16).toFixed(2);
+					teaspoonsPriceCell.innerText = (pricePerTablespoon / 3).toFixed(2);
+				} else if (teaspoons > 0) {
+					// Convert from teaspoons to cups and tablespoons
+					tablespoonsCell.innerText = (teaspoons / 3).toFixed(2);
+					cupsCell.innerText = (teaspoons / (16 * 3)).toFixed(2);
+
+					// Recalculate prices
+					const pricePerTeaspoon = parseFloat((row.cells[2].innerText) / teaspoons) || 0; // Assume price is in the 'Price' column
+					teaspoonsPriceCell.innerText = pricePerTeaspoon.toFixed(2);
+					tablespoonsPriceCell.innerText = (pricePerTeaspoon * 3).toFixed(2);
+					cupsPriceCell.innerText = (pricePerTeaspoon * (16 * 3)).toFixed(2);
+				}
+			});
+
+			alert('Units and prices recalculated!');
+		}
+
+        // Save all ingredients to localStorage
+        function saveAllIngredients() {
+            const tbody = document.querySelector('#ingredients-window tbody');
+            const rows = Array.from(tbody.rows);
+            const ingredients = rows.map(row => Array.from(row.cells).map(cell => cell.innerText.trim()));
+            localStorage.setItem('ingredients', JSON.stringify(ingredients));
+            loadIngredients(); // Reload ingredients after saving
+            alert('Ingredients saved!');
+        }
+
+		// Delete selected ingredient row
+		function deleteIngredient() {
+			const table = document.querySelector('#ingredients-window table');
+			const selectedRow = table.querySelector('tr.selected');
+			if (selectedRow) {
+				selectedRow.remove();
+				saveAllIngredients(); // Save after deletion
+			} else {
+				alert('Please select a row to delete.');
+			}
+		}
+
+        // Add a new recipe
+        function addRecipe() {
+            const tbody = document.querySelector('#recipes-window tbody');
+            const row = tbody.insertRow();
+            const cells = ['Recipe Name'];
+            cells.forEach(cell => {
+                const newCell = row.insertCell();
+                newCell.contentEditable = 'true';
+                newCell.innerText = cell;
+            });
+
+            const totalCostCell = row.insertCell();
+            totalCostCell.innerText = '0.00'; // Default value
+
+            const retailCostCell = row.insertCell();
+            retailCostCell.innerText = '0.00'; // Default value
+
+            const collapsibleButton = document.createElement('button');
+            collapsibleButton.className = 'collapsible';
+            collapsibleButton.innerText = 'Expand Ingredients';
+            row.appendChild(collapsibleButton);
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'content';
+            contentDiv.innerHTML = `
+                <p>Ingredients (Format: Name, Amount, Unit):</p>
+                <textarea placeholder="List ingredients here..."></textarea>
+                <p>Servings:</p>
+                <input type="number" placeholder="Number of servings" />
+                <p>Extra Notes:</p>
+                <textarea placeholder="Add any extra notes..."></textarea>
+            `;
+            row.appendChild(contentDiv);
+            collapsibleButton.addEventListener('click', () => {
+                contentDiv.style.display = contentDiv.style.display === 'block' ? 'none' : 'block';
+                collapsibleButton.classList.toggle('active');
+            });
+        }
+
+        // Calculate Total Cost for a recipe
+        function calculateTotalCost(ingredientsList) {
+            const ingredients = JSON.parse(localStorage.getItem('ingredients')) || [];
+            let totalCost = 0;
+
+            ingredientsList.forEach(item => {
+                const [name, amount, unit] = item.split(',');
+                const ingredient = ingredients.find(i => i[0] === name.trim()); // Look for the ingredient in the list
+
+                if (ingredient) {
+                    let pricePerUnit;
+                    switch (unit.trim().toLowerCase()) {
+                        case 'cup':
+                            pricePerUnit = parseFloat(ingredient[4].replace(/[^0-9.]/g, ''));
+                            break;
+                        case 'tablespoon':
+                            pricePerUnit = parseFloat(ingredient[6].replace(/[^0-9.]/g, ''));
+                            break;
+                        case 'teaspoon':
+                            pricePerUnit = parseFloat(ingredient[8].replace(/[^0-9.]/g, ''));
+                            break;
+                        default:
+                            pricePerUnit = 0;
+                    }
+
+                    totalCost += pricePerUnit * parseFloat(amount.trim());
+                }
+            });
+
+            return totalCost.toFixed(2);
+        }
+
+        // Add a new recipe
+        function addRecipe() {
+            const tbody = document.querySelector('#recipes-window tbody');
+            const row = tbody.insertRow();
+            const cells = ['Recipe Name'];
+            cells.forEach(cell => {
+                const newCell = row.insertCell();
+                newCell.contentEditable = 'true';
+                newCell.innerText = cell;
+            });
+
+            const totalCostCell = row.insertCell();
+            totalCostCell.innerText = '0.00'; // Default value
+
+            const retailCostCell = row.insertCell();
+            retailCostCell.innerText = '0.00'; // Default value
+
+            const collapsibleButton = document.createElement('button');
+            collapsibleButton.className = 'collapsible';
+            collapsibleButton.innerText = 'Expand Ingredients';
+            row.appendChild(collapsibleButton);
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'content';
+            contentDiv.innerHTML = `
+                <p>Ingredients (Format: Name, Amount, Unit):</p>
+                <textarea placeholder="List ingredients here..."></textarea>
+                <p>Servings:</p>
+                <input type="number" placeholder="Number of servings" />
+                <p>Extra Notes:</p>
+                <textarea placeholder="Add any extra notes..."></textarea>
+            `;
+            row.appendChild(contentDiv);
+            collapsibleButton.addEventListener('click', () => {
+                contentDiv.style.display = contentDiv.style.display === 'block' ? 'none' : 'block';
+                collapsibleButton.classList.toggle('active');
+            });
+        }
+
+		// Convert a fraction string (e.g., "3/4") into a decimal number (e.g., 0.75)
+		function convertFractionToDecimal(fraction) {
+			const parts = fraction.split('/');
+			if (parts.length === 2) {
+				const numerator = parseFloat(parts[0].trim());
+				const denominator = parseFloat(parts[1].trim());
+				if (denominator !== 0) {
+					return numerator / denominator;
+				}
+			}
+			return parseFloat(fraction); // Return the fraction as a decimal if it's not a fraction
+		}
+
+		// Calculate Total Cost for a recipe (with fractions)
+		function calculateTotalCost(ingredientsList) {
+			const ingredients = JSON.parse(localStorage.getItem('ingredients')) || [];
+			let totalCost = 0;
+
+			ingredientsList.forEach(item => {
+				// Updated regex to handle fractions in ingredient amounts (e.g., "3/4 cup")
+				const match = item.match(/^(.+?):\s*(\d+(\s*\/\s*\d+)?)\s*(cup|tsp|tbsp|g|ml|l|oz|kg|kg)\s*$/i);
+
+				if (match) {
+					const ingredientName = match[1].trim();
+					const amountStr = match[2].trim();
+					const unit = match[4].trim().toLowerCase();
+
+					// Convert the amount to a decimal (handles fractions like "3/4")
+					const amount = convertFractionToDecimal(amountStr);
+
+					const ingredient = ingredients.find(i => i[0] === ingredientName); // Find the ingredient from stored data
+
+					if (ingredient) {
+						let pricePerUnit = 0;
+						switch (unit) {
+							case 'cup':
+								pricePerUnit = parseFloat(ingredient[4].replace(/[^0-9.]/g, ''));
+								break;
+							case 'tsp':
+								pricePerUnit = parseFloat(ingredient[6].replace(/[^0-9.]/g, ''));
+								break;
+							case 'tbsp':
+								pricePerUnit = parseFloat(ingredient[8].replace(/[^0-9.]/g, ''));
+								break;
+							// Add cases for other units as needed
+							default:
+								console.log('Unknown unit:', unit);
+								return;
+						}
+
+						totalCost += pricePerUnit * amount;
+					}
+				}
+			});
+
+			return totalCost.toFixed(2);
+		}
+
+		// Function to handle row selection for recipes
+		function selectRecipeRow(event) {
+			const rows = document.querySelectorAll('#recipes-window tbody tr');
+			rows.forEach(row => row.classList.remove('selected')); // Remove 'selected' class from all rows
+			event.target.closest('tr').classList.add('selected'); // Add 'selected' class to clicked row
+		}
+
+		// Load Recipes and sort them alphabetically by recipe name
+		function loadRecipes() {
+			const tbody = document.querySelector('#recipes-window tbody');
+			const recipes = JSON.parse(localStorage.getItem('recipes')) || [];
+
+			// Sort recipes alphabetically by recipeName
+			recipes.sort((a, b) => a.recipeName.toLowerCase().localeCompare(b.recipeName.toLowerCase()));
+
+			// Clear the table before loading new data
+			tbody.innerHTML = '';
+
+			recipes.forEach(recipe => {
+				const row = tbody.insertRow();
+
+				// Editable recipe name (contentEditable)
+				const recipeNameCell = row.insertCell();
+				recipeNameCell.contentEditable = 'true';
+				recipeNameCell.innerText = recipe.recipeName;
+
+				// Total cost and retail cost cells (readonly)
+				const totalCostCell = row.insertCell();
+				totalCostCell.innerText = recipe.totalCost;
+
+				const retailCostCell = row.insertCell();
+				retailCostCell.innerText = recipe.retailCost;
+
+				// Collapsible button for ingredients
+				const collapsibleButton = document.createElement('button');
+				collapsibleButton.className = 'collapsible';
+				collapsibleButton.innerText = 'Expand Ingredients';
+				row.appendChild(collapsibleButton);
+
+				const contentDiv = document.createElement('div');
+				contentDiv.className = 'content';
+				contentDiv.innerHTML = `
+					<p>Ingredients (Format: Ingredient: # amount unit):</p>
+					<textarea class="ingredients" placeholder="List ingredients here...">${recipe.ingredientsText}</textarea>
+					<p>Servings:</p>
+					<input type="number" class="servings" value="${recipe.servings}" placeholder="Number of servings" />
+					<p>Extra Notes:</p>
+					<textarea class="notes" placeholder="Add any extra notes...">${recipe.notes}</textarea>
+				`;
+				row.appendChild(contentDiv);
+
+				collapsibleButton.addEventListener('click', () => {
+					contentDiv.style.display = contentDiv.style.display === 'block' ? 'none' : 'block';
+					collapsibleButton.classList.toggle('active');
+				});
+
+				// Add click event to select the row
+				row.addEventListener('click', selectRecipeRow);
+			});
+		}
+
+		
+		function selectRecipeRow(event) {
+			const rows = document.querySelectorAll('#recipes-window tbody tr');
+			rows.forEach(row => row.classList.remove('selected')); // Remove 'selected' class from all rows
+			event.target.closest('tr').classList.add('selected'); // Add 'selected' class to clicked row
+		}
+
+		// Save all recipes to localStorage
+		function saveAllRecipes() {
+			const tbody = document.querySelector('#recipes-window tbody');
+			const rows = Array.from(tbody.rows); // Get all rows in the table
+			const recipes = rows.map(row => {
+				// Get the recipe name (from contentEditable cell)
+				const recipeNameCell = row.querySelector('td'); // Get the editable cell
+				const recipeName = recipeNameCell ? recipeNameCell.innerText.trim() : '';
+
+				// Get ingredients, servings, and notes
+				const ingredientsText = row.querySelector('.ingredients') ? row.querySelector('.ingredients').value.trim() : '';
+				const servings = row.querySelector('.servings') ? row.querySelector('.servings').value.trim() : '';
+				const notes = row.querySelector('.notes') ? row.querySelector('.notes').value.trim() : '';
+
+				// Split ingredients and recalculate the total cost
+				const ingredientsList = ingredientsText.split('\n');
+				const totalCost = calculateTotalCost(ingredientsList);
+				const servingsValue = parseFloat(servings) || 1; // Default to 1 if servings is not provided or 0
+				const retailCost = ((totalCost / servingsValue) * 1.8).toFixed(2); // Calculate retail cost based on servings
+
+				return { recipeName, totalCost, retailCost, ingredientsText, servings, notes };
+			});
+
+			// Save the recipes in localStorage
+			localStorage.setItem('recipes', JSON.stringify(recipes));
+			loadRecipes(); // Reload recipes after saving
+			alert('Recipes saved!');
+		}
+
+		// Delete selected recipe row
+		function deleteRecipe() {
+			const table = document.querySelector('#recipes-window table');
+			const selectedRow = table.querySelector('tr.selected');
+			if (selectedRow) {
+				selectedRow.remove();
+				saveAllRecipes(); // Save after deletion
+			} else {
+				alert('Please select a row to delete.');
+			}
+		}
+
+
+    </script>
+    
+</body>
+</html>
