@@ -748,43 +748,58 @@
         }		
 
 		function saveAllItems() {
-			const tbody = document.querySelector('#additional-stuff tbody');
-			const rows = Array.from(tbody.rows);
-			const items = rows.map(row => Array.from(row.cells).map(cell => cell.innerText.trim()));
-			localStorage.setItem('items', JSON.stringify(items));
-			loadItems();
-		}
+    const tbody = document.querySelector('#additional-stuff tbody');
+    const rows = Array.from(tbody.rows);
+    const items = rows.map(row => Array.from(row.cells).map(cell => cell.innerText.trim()));
+
+    // Reference to the "items" node in Firebase
+    const itemsRef = firebase.database().ref('items');
+
+    // Set the data in Firebase
+    itemsRef.set(items)
+        .then(() => {
+            console.log("Items saved to Firebase!");
+            loadItems();  // Reload items after saving
+        })
+        .catch((error) => {
+            console.error("Error saving items to Firebase:", error);
+        });
+}
+
 			
 		function loadItems() {
-			const savedItems = localStorage.getItem('items');
-			const tbody = document.querySelector('#additional-stuff tbody');
-			tbody.innerHTML = ''; // Clear the table first
+    const tbody = document.querySelector('#additional-stuff tbody');
+    tbody.innerHTML = ''; // Clear the table first
 
-			if (savedItems) {
-				const Items = JSON.parse(savedItems);
+    const itemsRef = firebase.database().ref('items'); // Reference to 'items' in Firebase
 
-				// Sort the Things alphabetically by the Name (index 0)
-				Items.sort((a, b) => a[0].localeCompare(b[0]));
+    itemsRef.once('value', snapshot => {
+        const items = snapshot.val() || []; // Get data from Firebase
 
-				Items.forEach(item => {
-					const row = tbody.insertRow();
+        // Sort the items alphabetically by the Name (index 0)
+        items.sort((a, b) => a[0].localeCompare(b[0]));
 
-					item.forEach((text, index) => {
-						const cell = row.insertCell();
-						cell.innerText = text;
+        items.forEach(item => {
+            const row = tbody.insertRow();
 
-						// Make specific cells editable or non-editable
-						cell.contentEditable = [3].includes(index) ? 'false' : 'true';
-					});
+            item.forEach((text, index) => {
+                const cell = row.insertCell();
+                cell.innerText = text;
 
-					updateCostPerItem(row);
+                // Make specific cells editable or non-editable
+                cell.contentEditable = [3].includes(index) ? 'false' : 'true';
+            });
 
-					// Add click event to select the row
-					row.addEventListener('click', selectItemRow);
-				});
+            updateCostPerItem(row);
 
-			}
-		}
+            // Add click event to select the row
+            row.addEventListener('click', selectItemRow);
+        });
+    }).catch((error) => {
+        console.error("Error loading items from Firebase:", error);
+    });
+}
+
 
         function selectItemRow(event) {
             const rows = document.querySelectorAll('#additional-stuff tbody tr');
