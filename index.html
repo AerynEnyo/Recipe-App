@@ -474,11 +474,12 @@
 
 		function calculateTotalCost(ingredientsList) {
     const dbRef = firebase.database().ref('ingredients'); // Assuming ingredients are stored under 'ingredients' in Firebase
-			console.log('DB:', dbRef);
     let totalCost = 0;
+	console.log('totalcostBefore:', totalCost);		
 
     dbRef.once('value').then(snapshot => {
         const ingredients = snapshot.val() || []; // Fetch ingredients from Firebase or default to empty array
+	    			console.log('ingredient:', ingredients);
 
         ingredientsList.forEach(item => {
             // Updated regex to handle simple and mixed fractions in ingredient amounts
