@@ -474,59 +474,64 @@
 
 		function calculateTotalCost(ingredientsList) {
     const dbRef = firebase.database().ref('ingredients'); // Assuming ingredients are stored under 'ingredients' in Firebase
-    let totalCost = 0;
-	console.log('totalcostBefore:', totalCost);		
+    return new Promise((resolve, reject) => {
+        let totalCost = 0;
+        console.log('totalCost Before:', totalCost);        
 
-    dbRef.once('value').then(snapshot => {
-        const ingredients = snapshot.val() || []; // Fetch ingredients from Firebase or default to empty array
-	    			console.log('ingredient:', ingredients);
+        dbRef.once('value').then(snapshot => {
+            const ingredients = snapshot.val() || []; // Fetch ingredients from Firebase or default to empty array
+            console.log('Ingredients:', ingredients);
 
-        ingredientsList.forEach(item => {
-            // Updated regex to handle simple and mixed fractions in ingredient amounts
-            const match = item.match(/^(.+?):\s*(\d+(?:\s+\d+\/\d+)?|\d+\/\d+)(?:\s*\.\d+)?\s*(cup|tsp|tbsp|g|ml|l|oz|kg|kg)\s*$/i);
+            ingredientsList.forEach(item => {
+                // Updated regex to handle simple and mixed fractions in ingredient amounts
+                const match = item.match(/^(.+?):\s*(\d+(?:\s+\d+\/\d+)?|\d+\/\d+)(?:\s*\.\d+)?\s*(cup|tsp|tbsp|g|ml|l|oz|kg|kg)\s*$/i);
 
-            if (match) {
-                const ingredientName = match[1].trim(); // Ingredient name
-                const amountStr = match[2].trim(); // Amount (with fraction or decimal)
-                const unit = match[3].trim().toLowerCase(); // Unit (e.g., "cup")
+                if (match) {
+                    const ingredientName = match[1].trim(); // Ingredient name
+                    const amountStr = match[2].trim(); // Amount (with fraction or decimal)
+                    const unit = match[3].trim().toLowerCase(); // Unit (e.g., "cup")
 
-                // Convert the amount to a decimal (handles mixed fractions like "1 1/2" and simple fractions like "1/2")
-                const amount = convertFractionToDecimal(amountStr);
+                    // Convert the amount to a decimal (handles mixed fractions like "1 1/2" and simple fractions like "1/2")
+                    const amount = convertFractionToDecimal(amountStr);
 
-                // Find the ingredient from Firebase data
-                const ingredient = ingredients.find(i => i.name === ingredientName); // Assuming 'name' is the key in Firebase
+                    // Find the ingredient from Firebase data
+                    const ingredient = ingredients.find(i => i.name === ingredientName); // Assuming 'name' is the key in Firebase
 
-                if (ingredient) {
-                    let pricePerUnit = 0;
-                    switch (unit) {
-                        case 'cup':
-                            pricePerUnit = parseFloat(ingredient.pricePerCup.replace(/[^0-9.]/g, ''));
-                            break;
-                        case 'tbsp':
-                            pricePerUnit = parseFloat(ingredient.pricePerTbsp.replace(/[^0-9.]/g, ''));
-                            break;
-                        case 'tsp':
-                            pricePerUnit = parseFloat(ingredient.pricePerTsp.replace(/[^0-9.]/g, ''));
-                            break;
-                        // Add cases for other units as needed
-                        default:
-                            console.log('Unknown unit:', unit);
-                            return;
+                    if (ingredient) {
+                        let pricePerUnit = 0;
+                        switch (unit) {
+                            case 'cup':
+                                pricePerUnit = parseFloat(ingredient.pricePerCup.replace(/[^0-9.]/g, ''));
+                                break;
+                            case 'tbsp':
+                                pricePerUnit = parseFloat(ingredient.pricePerTbsp.replace(/[^0-9.]/g, ''));
+                                break;
+                            case 'tsp':
+                                pricePerUnit = parseFloat(ingredient.pricePerTsp.replace(/[^0-9.]/g, ''));
+                                break;
+                            // Add cases for other units as needed
+                            default:
+                                console.log('Unknown unit:', unit);
+                                return;
+                        }
+
+                        if (!isNaN(pricePerUnit)) {
+                            totalCost += pricePerUnit * amount;
+                        } else {
+                            console.log(`Price per unit for ${ingredientName} (${unit}) is invalid`);
+                        }
                     }
-
-                    totalCost += pricePerUnit * amount;
                 }
-            }
-        });
+            });
 
-        // Return the total cost after calculation
-        console.log('Total Cost:', totalCost.toFixed(2));
-        return totalCost.toFixed(2); // Return the total cost rounded to two decimal places
-    }).catch(error => {
-        console.error('Error fetching ingredients:', error);
+            console.log('Total Cost:', totalCost.toFixed(2));
+            resolve(totalCost.toFixed(2)); // Resolving the promise with the total cost
+        }).catch(error => {
+            console.error('Error fetching ingredients:', error);
+            reject(error); // Rejecting the promise on error
+        });
     });
 }
-
 
 
 		// Function to handle row selection for recipes
