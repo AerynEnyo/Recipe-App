@@ -63,8 +63,23 @@
 			resize: both;
 		}
     </style>
+
+<script src="https://www.gstatic.com/firebasejs/9.16.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.16.0/firebase-database.js"></script>
+
 </head>
 <body>
+	<script>
+		const firebaseConfig = {
+		apiKey: "AIzaSyC7cy336Qm6jxmor33-ugriHoiPKK8r7LI",
+		authDomain: "homemade-bliss-recipe-app.firebaseapp.com",
+		projectId: "homemade-bliss-recipe-app",
+		storageBucket: "homemade-bliss-recipe-app.firebasestorage.app",
+		messagingSenderId: "258234509887",
+		appId: "1:258234509887:web:0b8c6331da9844f9f2268a"
+};
+	</script>
+	
     <div id="main-window">
         <button onclick="openIngredientsWindow()">Ingredients</button>
         <button onclick="openRecipesWindow()">Recipes</button>
@@ -645,8 +660,16 @@
 				};
 			});
 
-			localStorage.setItem('recipes', JSON.stringify(recipes));
-			loadRecipes(); // Reload recipes after saving
+			// Save to Firebase
+    const dbRef = firebase.database().ref('recipes');
+    dbRef.set(recipes)
+        .then(() => {
+            console.log('Recipes saved to Firebase');
+            loadRecipes(); // Reload recipes after saving
+        })
+        .catch(error => {
+            console.error('Error saving recipes to Firebase:', error);
+        });
 		}
 
 
