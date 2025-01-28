@@ -473,47 +473,58 @@
 		}
 
 		function calculateTotalCost(ingredientsList) {
-			const ingredients = JSON.parse(localStorage.getItem('ingredients')) || [];
-			let totalCost = 0;
+    const dbRef = firebase.database().ref('ingredients'); // Assuming ingredients are stored under 'ingredients' in Firebase
+    let totalCost = 0;
 
-			ingredientsList.forEach(item => {
-				// Updated regex to handle simple and mixed fractions in ingredient amounts
-				const match = item.match(/^(.+?):\s*(\d+(?:\s+\d+\/\d+)?|\d+\/\d+)(?:\s*\.\d+)?\s*(cup|tsp|tbsp|g|ml|l|oz|kg|kg)\s*$/i);
+    dbRef.once('value').then(snapshot => {
+        const ingredients = snapshot.val() || []; // Fetch ingredients from Firebase or default to empty array
 
-				if (match) {
-					const ingredientName = match[1].trim(); // Ingredient name
-					const amountStr = match[2].trim(); // Amount (with fraction or decimal)
-					const unit = match[3].trim().toLowerCase(); // Unit (e.g., "cup")
+        ingredientsList.forEach(item => {
+            // Updated regex to handle simple and mixed fractions in ingredient amounts
+            const match = item.match(/^(.+?):\s*(\d+(?:\s+\d+\/\d+)?|\d+\/\d+)(?:\s*\.\d+)?\s*(cup|tsp|tbsp|g|ml|l|oz|kg|kg)\s*$/i);
 
-					// Convert the amount to a decimal (handles mixed fractions like "1 1/2" and simple fractions like "1/2")
-					const amount = convertFractionToDecimal(amountStr);
+            if (match) {
+                const ingredientName = match[1].trim(); // Ingredient name
+                const amountStr = match[2].trim(); // Amount (with fraction or decimal)
+                const unit = match[3].trim().toLowerCase(); // Unit (e.g., "cup")
 
-					const ingredient = ingredients.find(i => i[0] === ingredientName); // Find the ingredient from stored data
+                // Convert the amount to a decimal (handles mixed fractions like "1 1/2" and simple fractions like "1/2")
+                const amount = convertFractionToDecimal(amountStr);
 
-					if (ingredient) {
-						let pricePerUnit = 0;
-						switch (unit) {
-							case 'cup':
-								pricePerUnit = parseFloat(ingredient[4].replace(/[^0-9.]/g, ''));
-								break;
-							case 'tbsp':
-								pricePerUnit = parseFloat(ingredient[6].replace(/[^0-9.]/g, ''));
-								break;
-							case 'tsp':
-								pricePerUnit = parseFloat(ingredient[8].replace(/[^0-9.]/g, ''));
-								break;
-							// Add cases for other units as needed
-							default:
-								console.log('Unknown unit:', unit);
-								return;
-						}
+                // Find the ingredient from Firebase data
+                const ingredient = ingredients.find(i => i.name === ingredientName); // Assuming 'name' is the key in Firebase
 
-						totalCost += pricePerUnit * amount;
-					}
-				}
-			});
-			return totalCost.toFixed(2); // Return the total cost rounded to two decimal places
-		}
+                if (ingredient) {
+                    let pricePerUnit = 0;
+                    switch (unit) {
+                        case 'cup':
+                            pricePerUnit = parseFloat(ingredient.pricePerCup.replace(/[^0-9.]/g, ''));
+                            break;
+                        case 'tbsp':
+                            pricePerUnit = parseFloat(ingredient.pricePerTbsp.replace(/[^0-9.]/g, ''));
+                            break;
+                        case 'tsp':
+                            pricePerUnit = parseFloat(ingredient.pricePerTsp.replace(/[^0-9.]/g, ''));
+                            break;
+                        // Add cases for other units as needed
+                        default:
+                            console.log('Unknown unit:', unit);
+                            return;
+                    }
+
+                    totalCost += pricePerUnit * amount;
+                }
+            }
+        });
+
+        // Return the total cost after calculation
+        console.log('Total Cost:', totalCost.toFixed(2));
+        return totalCost.toFixed(2); // Return the total cost rounded to two decimal places
+    }).catch(error => {
+        console.error('Error fetching ingredients:', error);
+    });
+}
+
 
 
 		// Function to handle row selection for recipes
