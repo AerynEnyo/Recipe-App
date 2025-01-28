@@ -203,36 +203,40 @@
 		}
 
 		// Load Ingredients from localStorage
-		function loadIngredients() {
-			const savedIngredients = localStorage.getItem('ingredients');
-			const tbody = document.querySelector('#ingredients-window tbody');
-			tbody.innerHTML = ''; // Clear the table first
-			
-			if (savedIngredients) {
-				const ingredients = JSON.parse(savedIngredients);
-				
-				// Sort the ingredients alphabetically by the Name (index 0)
-				ingredients.sort((a, b) => a[0].localeCompare(b[0]));
+		async function loadIngredients() {
+    const tbody = document.querySelector('#ingredients-window tbody');
+    tbody.innerHTML = ''; // Clear the table first
 
-				ingredients.forEach(ingredient => {
-					const row = tbody.insertRow();
-					ingredient.forEach((text, index) => {
-						const cell = row.insertCell();
-						cell.contentEditable = [4, 6, 8].includes(index) ? 'false' : 'true';
-						cell.innerText = text;
+    // Reference to the ingredients in Firebase
+    const ingredientsRef = firebase.database().ref('ingredients');
 
-						if ([4, 6, 8].includes(index)) {
-							cell.contentEditable = 'false';
-						} else {
-							cell.contentEditable = 'true';
-						}
-					});
+    try {
+        // Fetch ingredients from Firebase
+        const snapshot = await ingredientsRef.once('value');
+        const ingredients = snapshot.val() || [];
 
-					// Add click event to select the row
-					row.addEventListener('click', selectIngredientRow);
-				});
-			}
-		}
+        // Sort the ingredients alphabetically by the Name (index 0)
+        ingredients.sort((a, b) => a[0].localeCompare(b[0]));
+
+        // Populate the table with the ingredients data
+        ingredients.forEach(ingredient => {
+            const row = tbody.insertRow();
+            ingredient.forEach((text, index) => {
+                const cell = row.insertCell();
+
+                // Determine if the cell should be editable or not based on the index
+                cell.contentEditable = [4, 6, 8].includes(index) ? 'false' : 'true';
+                cell.innerText = text;
+            });
+
+            // Add click event to select the row
+            row.addEventListener('click', selectIngredientRow);
+        });
+    } catch (error) {
+        console.error('Error loading ingredients from Firebase:', error);
+    }
+}
+
 
 
         // Add a new ingredient row
@@ -308,14 +312,29 @@
 		}
 
         // Save all ingredients to localStorage
-        function saveAllIngredients() {
-            const tbody = document.querySelector('#ingredients-window tbody');
-            const rows = Array.from(tbody.rows);
-            const ingredients = rows.map(row => Array.from(row.cells).map(cell => cell.innerText.trim()));
-            localStorage.setItem('ingredients', JSON.stringify(ingredients));
-            loadIngredients(); // Reload ingredients after saving
-            alert('Ingredients saved!');
-        }
+        async function saveAllIngredients() {
+    const tbody = document.querySelector('#ingredients-window tbody');
+    const rows = Array.from(tbody.rows);
+
+    // Create an array of ingredients data
+    const ingredients = rows.map(row => Array.from(row.cells).map(cell => cell.innerText.trim()));
+
+    try {
+        // Reference to the ingredients in Firebase
+        const ingredientsRef = firebase.database().ref('ingredients');
+
+        // Save the ingredients array to Firebase
+        await ingredientsRef.set(ingredients);
+
+        // Reload ingredients from Firebase after saving
+        loadIngredients(); 
+
+        alert('Ingredients saved to Firebase!');
+    } catch (error) {
+        console.error('Error saving ingredients to Firebase:', error);
+    }
+}
+
 
 		// Delete selected ingredient row
 		function deleteIngredient() {
@@ -405,7 +424,6 @@
 		// Convert a fraction string (e.g., "3/4") or mixed fraction (e.g., "1 1/2") into a decimal number (e.g., 0.75 or 1.5)
 		function convertFractionToDecimal(fraction) {
 			// Remove leading/trailing spaces
-			console.log(`Invalid input: ${fraction} => 0`);
 			fraction = fraction.trim();
 
 			// Handle mixed fractions like "1 1/2" or "0 1/2"
