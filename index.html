@@ -505,84 +505,95 @@
 			event.target.closest('tr').classList.add('selected'); // Add 'selected' class to clicked row
 		}
 
-		function loadRecipes() {
-			const tbody = document.querySelector('#recipes-window tbody');
-			const recipes = JSON.parse(localStorage.getItem('recipes')) || [];
+		async function loadRecipes() {
+    const tbody = document.querySelector('#recipes-window tbody');
+    tbody.innerHTML = '';
 
-			recipes.sort((a, b) => a.recipeName.toLowerCase().localeCompare(b.recipeName.toLowerCase()));
+    // Reference to the recipes in Firebase
+    const recipesRef = firebase.database().ref('recipes');
 
-			tbody.innerHTML = '';
+    try {
+        // Fetch the recipes from Firebase
+        const snapshot = await recipesRef.once('value');
+        const recipes = snapshot.val() ? Object.values(snapshot.val()) : [];
 
-			recipes.forEach(recipe => {
-				const row = tbody.insertRow();
+        // Sort recipes by name
+        recipes.sort((a, b) => a.recipeName.toLowerCase().localeCompare(b.recipeName.toLowerCase()));
 
-				// Editable recipe name (contentEditable)
-				const recipeNameCell = row.insertCell();
-				recipeNameCell.contentEditable = 'true';
-				recipeNameCell.innerText = recipe.recipeName;
+        // Populate the table with the recipes
+        recipes.forEach(recipe => {
+            const row = tbody.insertRow();
 
-				// Total cost and retail cost cells (readonly)
-				const totalCostCell = row.insertCell();
-				totalCostCell.innerText = recipe.totalCost;
+            // Editable recipe name (contentEditable)
+            const recipeNameCell = row.insertCell();
+            recipeNameCell.contentEditable = 'true';
+            recipeNameCell.innerText = recipe.recipeName;
 
-				const retailCostCell = row.insertCell();
-				retailCostCell.innerText = recipe.retailCost;
+            // Total cost and retail cost cells (readonly)
+            const totalCostCell = row.insertCell();
+            totalCostCell.innerText = recipe.totalCost;
 
-				// Collapsible button for ingredients
-				const collapsibleButton = document.createElement('button');
-				collapsibleButton.className = 'collapsible';
-				collapsibleButton.innerText = 'Expand Ingredients';
-				row.appendChild(collapsibleButton);
+            const retailCostCell = row.insertCell();
+            retailCostCell.innerText = recipe.retailCost;
 
-				const contentDiv = document.createElement('div');
-				contentDiv.className = 'content';
-				contentDiv.innerHTML = `
-					<p>Ingredients (Format: Ingredient: # amount unit):</p>
-					<textarea class="ingredients" placeholder="List ingredients here... Ex. Flour: 1 cup">${recipe.ingredientsText}</textarea>
-					<p>Trays:</p>
-					<input type="number" class="Trays" value="${recipe.Trays}" placeholder="Number of Trays" readonly />
-					<p>Number of Cookies:</p>
-					<input type="number" class="number-of-cookies" value="${recipe.numberOfCookies}" placeholder="Number of cookies" />
-					<p>Number of Cookies per Tray:</p>
-					<input type="number" class="cookies-per-tray" value="${recipe.cookiesPerTray}" placeholder="Number of cookies per tray" />
-					<p>Prep Time: (Minutes)</p>
-					<input type="number" class="prep-time" value="${recipe.prepTime}" placeholder="Prep Time" />
-					<p>Extra Notes:</p>
-					<textarea class="notes" placeholder="Add any extra notes...">${recipe.notes}</textarea>
-				`;
-				row.appendChild(contentDiv);
+            // Collapsible button for ingredients
+            const collapsibleButton = document.createElement('button');
+            collapsibleButton.className = 'collapsible';
+            collapsibleButton.innerText = 'Expand Ingredients';
+            row.appendChild(collapsibleButton);
 
-				collapsibleButton.addEventListener('click', () => {
-					contentDiv.style.display = contentDiv.style.display === 'block' ? 'none' : 'block';
-					collapsibleButton.classList.toggle('active');
-				});
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'content';
+            contentDiv.innerHTML = `
+                <p>Ingredients (Format: Ingredient: # amount unit):</p>
+                <textarea class="ingredients" placeholder="List ingredients here... Ex. Flour: 1 cup">${recipe.ingredientsText || ''}</textarea>
+                <p>Trays:</p>
+                <input type="number" class="Trays" value="${recipe.Trays || ''}" placeholder="Number of Trays" readonly />
+                <p>Number of Cookies:</p>
+                <input type="number" class="number-of-cookies" value="${recipe.numberOfCookies || ''}" placeholder="Number of cookies" />
+                <p>Number of Cookies per Tray:</p>
+                <input type="number" class="cookies-per-tray" value="${recipe.cookiesPerTray || ''}" placeholder="Number of cookies per tray" />
+                <p>Prep Time: (Minutes)</p>
+                <input type="number" class="prep-time" value="${recipe.prepTime || ''}" placeholder="Prep Time" />
+                <p>Extra Notes:</p>
+                <textarea class="notes" placeholder="Add any extra notes...">${recipe.notes || ''}</textarea>
+            `;
+            row.appendChild(contentDiv);
 
-				// Add event listeners to automatically update Trays when cookies or cookies per tray change
-				const numberOfCookiesInput = row.querySelector('.number-of-cookies');
-				const cookiesPerTrayInput = row.querySelector('.cookies-per-tray');
-				const traysInput = row.querySelector('.Trays');
+            collapsibleButton.addEventListener('click', () => {
+                contentDiv.style.display = contentDiv.style.display === 'block' ? 'none' : 'block';
+                collapsibleButton.classList.toggle('active');
+            });
 
-				numberOfCookiesInput.addEventListener('input', updateTrays);
-				cookiesPerTrayInput.addEventListener('input', updateTrays);
+            // Add event listeners to automatically update Trays when cookies or cookies per tray change
+            const numberOfCookiesInput = row.querySelector('.number-of-cookies');
+            const cookiesPerTrayInput = row.querySelector('.cookies-per-tray');
+            const traysInput = row.querySelector('.Trays');
 
-				// Update function for trays calculation
-					function updateTrays() {
-						const numberOfCookies = parseFloat(numberOfCookiesInput.value) || 0;
-						const cookiesPerTray = parseFloat(cookiesPerTrayInput.value) || 1; // Avoid division by zero
+            numberOfCookiesInput.addEventListener('input', updateTrays);
+            cookiesPerTrayInput.addEventListener('input', updateTrays);
 
-						if (cookiesPerTray > 0) {
-							const trays = (numberOfCookies / cookiesPerTray).toFixed(2);
-							traysInput.value = trays;
-						}
-					}
-				
+            // Update function for trays calculation
+            function updateTrays() {
+                const numberOfCookies = parseFloat(numberOfCookiesInput.value) || 0;
+                const cookiesPerTray = parseFloat(cookiesPerTrayInput.value) || 1; // Avoid division by zero
 
-				// Add click event to select the row
-				row.addEventListener('click', selectRecipeRow);
-				
-				updateTrays();
-			});
-		}
+                if (cookiesPerTray > 0) {
+                    const trays = (numberOfCookies / cookiesPerTray).toFixed(2);
+                    traysInput.value = trays;
+                }
+            }
+
+            // Add click event to select the row
+            row.addEventListener('click', selectRecipeRow);
+
+            updateTrays();
+        });
+    } catch (error) {
+        console.error('Error loading recipes:', error);
+    }
+}
+
 
 		function getPrepTimeForRecipe(recipeRow) {
 			const prepTimeInput = recipeRow.querySelector('.prep-time');
