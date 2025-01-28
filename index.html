@@ -474,6 +474,7 @@
 
 		function calculateTotalCost(ingredientsList) {
     const dbRef = firebase.database().ref('ingredients'); // Assuming ingredients are stored under 'ingredients' in Firebase
+			console.log('DB:', dbRef);
     let totalCost = 0;
 
     dbRef.once('value').then(snapshot => {
