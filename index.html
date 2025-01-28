@@ -620,37 +620,46 @@
 		}
 
         function AdditionalCosts(recipeRow) {
-            // Get PrepTime and TraysValue
-            const prepTime = getPrepTimeForRecipe(recipeRow); // Get the prepTime from the row
-            const traysElement = recipeRow.querySelector('.Trays');
-            const TraysValue = traysElement ? parseFloat(traysElement.value.trim()) : 1;
+    // Get PrepTime and TraysValue
+    const prepTime = getPrepTimeForRecipe(recipeRow); // Get the prepTime from the row
+    const traysElement = recipeRow.querySelector('.Trays');
+    const TraysValue = traysElement ? parseFloat(traysElement.value.trim()) : 1;
 
-            // Calculate Labour
-            const labour = ((15 / 60) * prepTime) / TraysValue;
+    // Calculate Labour
+    const labour = ((15 / 60) * prepTime) / TraysValue;
 
-            // Retrieve 'items' from localStorage
-            let materials = 0;
-            const itemsData = JSON.parse(localStorage.getItem('items')) || []; // Default to empty array if not found
+    // Retrieve 'items' from Firebase
+    let materials = 0;
 
-            if (itemsData.length > 0) {
-                // Sum up the 4th column (index 3) from each item
-                materials = itemsData.reduce((total, item) => {
-                    const costPerItem = parseFloat(item[3]) || 0; // Safely parse the 4th column
-                    return total + costPerItem;
-                }, 0);
-            } else {
-                console.warn('No items data found in localStorage.');
-            }
+    const itemsRef = firebase.database().ref('items'); // Reference to the 'items' node in Firebase
 
-            // Debugging
-            console.log('Items Data:', itemsData);
-            console.log('Total Materials Cost:', materials);
+    itemsRef.once('value', snapshot => {
+        const itemsData = snapshot.val() || []; // Get data from Firebase
 
-            // Total Additional Costs
-            const addcost = labour + materials;
-
-            return addcost;
+        if (itemsData.length > 0) {
+            // Sum up the 4th column (index 3) from each item
+            materials = itemsData.reduce((total, item) => {
+                const costPerItem = parseFloat(item[3]) || 0; // Safely parse the 4th column
+                return total + costPerItem;
+            }, 0);
+        } else {
+            console.warn('No items data found in Firebase.');
         }
+
+        // Debugging
+        console.log('Items Data from Firebase:', itemsData);
+        console.log('Total Materials Cost:', materials);
+
+        // Total Additional Costs
+        const addcost = labour + materials;
+
+        // Now you can use the additional cost (addcost) for other calculations or updating UI
+        return addcost;
+    }).catch((error) => {
+        console.error("Error loading items data from Firebase:", error);
+    });
+}
+
 
 		function saveAllRecipes() {
 			const tbody = document.querySelector('#recipes-window tbody');
