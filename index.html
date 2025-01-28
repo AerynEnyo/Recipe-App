@@ -649,9 +649,11 @@
         // Debugging
         console.log('Items Data from Firebase:', itemsData);
         console.log('Total Materials Cost:', materials);
+	console.log('Total labour Cost:', labour);
 
         // Total Additional Costs
         const addcost = labour + materials;
+	    console.log('Total add Cost:', addcost);
 
         // Now you can use the additional cost (addcost) for other calculations or updating UI
         return addcost;
